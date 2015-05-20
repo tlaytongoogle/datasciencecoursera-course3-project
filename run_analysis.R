@@ -1,21 +1,20 @@
 ## When executed in a working directory containing the UCI HAR Dataset directory, this script
 ## writes a file called averages.txt to the working directory. This file contains a tidy dataset,
-## the average values of the mean and standard-deviation feature measurements from the UCI HAR Dataser,
+## the average values of the mean and standard-deviation feature measurements from the UCI HAR Dataset,
 ## aggregated by subject and activity.
-
-# Requires the data.table package
-library(data.table)
 
 
 
 ## Loads the training and testing subject IDs, mean and std measurements, and activities in a tidy data set.
-## Requires that the working directory contain the UCI HAR Dataset.
+## Requires that the working directory contain the UCI HAR Dataset, rooted in a subdirectory named "UCI HAR Dataset".
 
 load.data  <- function() {
   
   # read subject IDs from a file
   read.data.subject <- function(file) {
-    read.table(file, col.names = c("subject"), colClasses = c("factor"))
+    read.table(file,
+      col.names = c("id"),
+      colClasses = c("factor"))
   }
   
   # load and merge training and testing data subject IDs
@@ -24,23 +23,24 @@ load.data  <- function() {
   data.subject <- rbind(train.data.subject, test.data.subject)
   
   
-  
   # load the feature names
-  feature.names <- read.table(
+  features <- read.table(
     "UCI HAR Dataset/features.txt",
-    col.names = c("row.number", "feature.name"),
-    row.names = 1, # interpret first column as row numbers
-    stringsAsFactors = FALSE
-    )$feature.name
+    col.names = c("id", "name"),
+    stringsAsFactors = FALSE) # leave the feature names as character strings
+  
+  # make sure the features are ordered by id
+  features <- features[order(features$id),]
   
   # read mean and std measurements from a file, using the feature names as column names
   read.data.X <- function(file) {
-    features.to.use <- grepl("mean()", feature.names, fixed = TRUE) | grepl("std()", feature.names, fixed = TRUE)
+    # logical vector denoting each feature name which contains "mean()" or "std()"
+    features.to.use <- grepl("mean()", features$name, fixed = TRUE) | grepl("std()", features$name, fixed = TRUE)
     data.X <- read.table(
       file,
-      col.names = feature.names,
-      colClasses = ifelse(features.to.use, NA, "NULL"), # reads only mean and std columns
-      check.names = FALSE)
+      col.names = features$name,
+      colClasses = ifelse(features.to.use, NA, "NULL"), # read only mean and std columns
+      check.names = FALSE) # don't mangle the feature names
   }
   
   # load and merge training and testing data measurements
@@ -49,20 +49,17 @@ load.data  <- function() {
   data.X <- rbind(train.data.X, test.data.X)
   
   
-  
   # load the activity labels
-  activity.labels = read.table(
+  activities = read.table(
     "UCI HAR Dataset/activity_labels.txt",
-    col.names = c("row.number", "activity.label"),
-    row.names = 1, # interpret first column as row numbers
-    stringsAsFactors = FALSE
-  )$activity.label
+    col.names = c("id", "label"),
+    stringsAsFactors = FALSE) # leave the activity labels as character strings
   
   # read activities from a file
   read.data.y <- function(file) {
     data.y <- read.table(file, col.names = c("activity"))
     # replace the activity column's integer values with corresponding activity labels
-    data.y$activity <- factor(data.y$activity, levels = 1:length(activity.labels), labels = activity.labels)
+    data.y$activity <- factor(data.y$activity, levels = activities$id, labels = activities$label)
     data.y
   }
   
@@ -72,9 +69,8 @@ load.data  <- function() {
   data.y <- rbind(train.data.y, test.data.y)
   
   
-  
   # merge data subject IDs, measurements and activities
-  cbind(data.subject, data.y, data.X)
+  cbind(subject = data.subject$id, data.y, data.X)
 }
 
 
@@ -83,10 +79,8 @@ load.data  <- function() {
 ## grouped by subject ID and activity.
 
 make.avg.data <- function(data) {
-  # Note that, although this function makes use of data.table, the input and output are both data frames
-  data <- data.table(data)
-  avg.data <- data[, lapply(.SD, mean), by = list(subject, activity)]
-  as.data.frame(avg.data)
+  # average all other columns by subject and activity columns
+  aggregate(. ~ subject + activity, data, mean)
 }
 
 

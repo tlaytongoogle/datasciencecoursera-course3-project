@@ -16,6 +16,6 @@ An R script which, when executed in a working directory containing the UCI HAR D
 
 The produced file can be read back into the R environment using the command:
 
-    read.table("averages.txt", header = TRUE, colClasses = "factor", check.names = FALSE)
+    read.table("averages.txt", header = TRUE, check.names = FALSE)
 
-The `colClasses` argument ensures that the subject IDs are read as a factor column instead of an integer one. The `check.names` argument prevents the feature names from being mangled when they are made into column names.
+The `check.names` argument prevents the feature names from being mangled when they are made into column names. Note that the resulting data frame's subject ID column will be integer-typed, rather than a factor as in the frame produced by the script. If desired, this can be corrected after reading using the `factor()` function, or during reading using the `colClasses` argument.
